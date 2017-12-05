@@ -1,3 +1,3 @@
 # Data_Science
 Python学习网址
-http://www.cnblogs.com/vamei/p/3528878.html
+入门http://www.cnblogs.com/vamei/archive/2012/09/13/2682778.html
