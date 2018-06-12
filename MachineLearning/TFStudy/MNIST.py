@@ -16,12 +16,18 @@ cross_entropy = -tf.reduce_sum(y_*tf.log(y))
 train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entropy)
 init = tf.global_variables_initializer()
 sess = tf.Session()
+# 数据序列化
+tf.summary.scalar("cost", cross_entropy)
+merged_sunmary_op = tf.summary.merge_all()
+summary_writer = tf.summary.FileWriter('/temp/mnist_logs', sess.graph)
 sess.run(init)
 # 随机1000次,每次抽取100个数据进行训练化参数(随机梯度下降法) W,b
 for i in range(1000):
     batch_xs, batch_ys = mnist.train.next_batch(100)
     sess.run(train_step, feed_dict={x:batch_xs, y_:batch_ys})
-
+    summary_str = sess.run(merged_sunmary_op)
+    summary_writer.add_summary(summary_str, i)
+summary_writer.close()
 # 评估模型,测试集测试正确率
 correct_prediction = tf.equal(tf.argmax(y, 1, output_type='int32', name='output'), tf.argmax(y_, 1, output_type='int32'))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
