@@ -57,25 +57,39 @@ def train():
     sess = tf.Session()
     # 数据序列化
     tf.summary.scalar("cost", cross_entropy)
+
+    # 评估模型,测试集测试正确率
+    with tf.name_scope('accuracy'):
+        with tf.name_scope('correct_prediction'):
+            correct_prediction = tf.equal(tf.argmax(y, 1, output_type='int32', name='output'),
+                                          tf.argmax(y_, 1, output_type='int32'))
+        with tf.name_scope('accuracy'):
+            accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+    tf.summary.scalar('accuracy', accuracy)
+
+    # Merge all the summaries and write them out to
+    # log_dir
     merged_sunmary_op = tf.summary.merge_all()
     summary_writer = tf.summary.FileWriter(FLAGS.log_dir, sess.graph)
     sess.run(init)
     # 随机1000次,每次抽取100个数据进行训练化参数(随机梯度下降法) W,b
     for i in range(1000):
+        if i % 10 == 0:
+            summary, acc = sess.run([merged_sunmary_op, accuracy], feed_dict=feed_dict(False))
+            summary_writer.add_summary(summary, i)
+        else:
+            summary, _ = sess.run([merged_sunmary_op, train_step], feed_dict=feed_dict(True))
+            summary_writer.add_summary(summary, i)
         summary, _ = sess.run([merged_sunmary_op, train_step], feed_dict=feed_dict(True))
         summary_writer.add_summary(summary, i)
 
     summary_writer.close()
-    # 评估模型,测试集测试正确率
-    correct_prediction = tf.equal(tf.argmax(y, 1, output_type='int32', name='output'),
-                                  tf.argmax(y_, 1, output_type='int32'))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-    tf.summary.scalar('accuracy', accuracy)
-    print(sess.run(accuracy, feed_dict={x: mnist.test.images, y_: mnist.test.labels}))
+
+    print(sess.run(accuracy, feed_dict=feed_dict(False)))
 
     # 保存训练好的模型
     # 形参output_node_names用于指定输出的节点名称,output_node_names=['output']对应pre_num=tf.argmax(y,1,name="output"),
-    output_graph_def = graph_util.convert_variables_to_constants(sess, sess.graph_def, output_node_names=['output'])
+    output_graph_def = graph_util.convert_variables_to_constants(sess, sess.graph_def, output_node_names=['accuracy/correct_prediction/output'])
     with tf.gfile.FastGFile(FLAGS.modePath, mode='wb') as f:  # ’wb’中w代表写文件，b代表将数据以二进制方式写入文件。
         f.write(output_graph_def.SerializeToString())
     sess.close()
