@@ -72,7 +72,7 @@ def train():
     merged_sunmary_op = tf.summary.merge_all()
     summary_writer = tf.summary.FileWriter(FLAGS.log_dir, sess.graph)
     sess.run(init)
-    # 随机1000次,每次抽取100个数据进行训练化参数(随机梯度下降法) W,b
+    # 随机1000次,每次抽取100个数据进行训练化参数(批量梯度下降法) W,b
     for i in range(1000):
         if i % 10 == 0:
             summary, acc = sess.run([merged_sunmary_op, accuracy], feed_dict=feed_dict(False))
