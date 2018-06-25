@@ -51,6 +51,7 @@ def train():
     y_ = tf.placeholder("float", [None, 10])
     # 定义损失函数,使用交叉熵作为损失函数
     cross_entropy = -tf.reduce_sum(y_ * tf.log(y))
+    # cross_entropy1 = tf.losses.sparse_softmax_cross_entropy(labels=y_, logits=y)
     # 使用梯度下降法 以0.01的学习速率 最小化交叉熵
     train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entropy)
     init = tf.global_variables_initializer()
@@ -70,20 +71,20 @@ def train():
     # Merge all the summaries and write them out to
     # log_dir
     merged_sunmary_op = tf.summary.merge_all()
-    summary_writer = tf.summary.FileWriter(FLAGS.log_dir, sess.graph)
+    train_writer = tf.summary.FileWriter(FLAGS.log_dir+'/train', sess.graph)
+    test_writer = tf.summary.FileWriter(FLAGS.log_dir+'/test', sess.graph)
     sess.run(init)
     # 随机1000次,每次抽取100个数据进行训练化参数(批量梯度下降法) W,b
     for i in range(1000):
         if i % 10 == 0:
             summary, acc = sess.run([merged_sunmary_op, accuracy], feed_dict=feed_dict(False))
-            summary_writer.add_summary(summary, i)
+            test_writer.add_summary(summary, i)
         else:
             summary, _ = sess.run([merged_sunmary_op, train_step], feed_dict=feed_dict(True))
-            summary_writer.add_summary(summary, i)
-        summary, _ = sess.run([merged_sunmary_op, train_step], feed_dict=feed_dict(True))
-        summary_writer.add_summary(summary, i)
+            train_writer.add_summary(summary, i)
 
-    summary_writer.close()
+    train_writer.close()
+    test_writer.close()
 
     print(sess.run(accuracy, feed_dict=feed_dict(False)))
 
