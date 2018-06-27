@@ -11,10 +11,12 @@ FLAGS = None
 
 
 class MnistPath:
-    def __init__(self, inputDataPath, log_dir, modePath):
+    def __init__(self, inputDataPath, log_dir, appModePath, modePath, modeFileName):
         self.inputDataPath = inputDataPath
         self.log_dir = log_dir
+        self.appModePath = appModePath
         self.modePath = modePath
+        self.modeFileName = modeFileName
 
 
 def initData():
@@ -22,7 +24,7 @@ def initData():
     初始化相关路径
     :return:
     """
-    pathInfo = MnistPath('data/MNIST', 'temp/mnist_deep_logs', 'model/mnist_deep.pb')
+    pathInfo = MnistPath('data/MNIST', 'temp/mnist_deep_logs', 'model_to_app/mnist_deep.pb', 'model/deep', 'model/deep/mnist_deep.ckpt')
     return pathInfo
 
 
@@ -112,7 +114,7 @@ def bias_variable(shape):
     return tf.Variable(initial)
 
 
-def train():
+def start(isTrain):
     # Import data
     mnist = input_data.read_data_sets(FLAGS.inputDataPath)
 
@@ -154,30 +156,41 @@ def train():
     # train_writer = tf.summary.FileWriter(graph_location)
     # train_writer.add_graph(tf.get_default_graph())
 
+    saver = tf.train.Saver(max_to_keep=1)
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        for i in range(100):
-            batch = mnist.train.next_batch(50)
-            if i % 100 == 0:
-                train_accuracy = accuracy.eval(feed_dict={
-                    x: batch[0], y_: batch[1], keep_prob: 1.0})
-                summary = sess.run(merged_sunmary_op, feed_dict={
-                    x: batch[0], y_: batch[1], keep_prob: 1.0})
-                # test_writer.add_summary(summary, i)
-                print('step %d, training accuracy %g' % (i, train_accuracy))
-            train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
 
-        print('test accuracy %g' % accuracy.eval(feed_dict={
-            x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
+        if isTrain:
+            # 开始模型训练
+            for i in range(1000):
+                batch = mnist.train.next_batch(50)
+                if i % 100 == 0:
+                    train_accuracy = accuracy.eval(feed_dict={
+                        x: batch[0], y_: batch[1], keep_prob: 1.0})
+                    summary = sess.run(merged_sunmary_op, feed_dict={
+                        x: batch[0], y_: batch[1], keep_prob: 1.0})
+                    # test_writer.add_summary(summary, i)
+                    print('step %d, training accuracy %g' % (i, train_accuracy))
+                    saver.save(sess, FLAGS.modeFileName, global_step=i)
+                train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
+            # 模型训练后的测试数据模型评估
+            print('test accuracy %g' % accuracy.eval(feed_dict={
+                x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
 
-        # 保存训练好的模型
-        # 形参output_node_names用于指定输出的节点名称,output_node_names=['output']对应pre_num=tf.argmax(y,1,name="output"),
-        output_graph_def = graph_util.convert_variables_to_constants(sess, sess.graph_def, output_node_names=[
-            'accuracy/output'])
-        with tf.gfile.FastGFile(FLAGS.modePath, mode='wb') as f:  # ’wb’中w代表写文件，b代表将数据以二进制方式写入文件。
-            f.write(output_graph_def.SerializeToString())
-    train_writer.close()
-    # test_writer.close()
+            # 保存训练好的模型
+            # 形参output_node_names用于指定输出的节点名称,output_node_names=['output']对应pre_num=tf.argmax(y,1,name="output"),
+            output_graph_def = graph_util.convert_variables_to_constants(sess, sess.graph_def, output_node_names=[
+                'accuracy/output'])
+            with tf.gfile.FastGFile(FLAGS.appModePath, mode='wb') as f:  # ’wb’中w代表写文件，b代表将数据以二进制方式写入文件。
+                f.write(output_graph_def.SerializeToString())
+        else:
+            mode_file = tf.train.latest_checkpoint(FLAGS.modePath)
+            saver.restore(sess, mode_file)
+            # 模型读取后的测试数据模型评估
+            print('test accuracy %g' % accuracy.eval(feed_dict={
+                x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
+        train_writer.close()
+        # test_writer.close()
 
 
 def main():
@@ -187,7 +200,9 @@ def main():
     if tf.gfile.Exists(FLAGS.log_dir):
         tf.gfile.DeleteRecursively(FLAGS.log_dir)
     tf.gfile.MakeDirs(FLAGS.log_dir)
-    train()
+    if not tf.gfile.Exists(FLAGS.modePath):
+        tf.gfile.MakeDirs(FLAGS.modePath)
+    start(True)
 
 
 if __name__ == '__main__':
