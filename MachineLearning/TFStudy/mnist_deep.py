@@ -147,9 +147,9 @@ def start(isTrain):
     graph_location = FLAGS.log_dir + '/train'
     print('Saving graph to: %s' % graph_location)
     train_writer = tf.summary.FileWriter(FLAGS.log_dir + '/train')
-    # test_writer = tf.summary.FileWriter(FLAGS.log_dir + '/test')
+    test_writer = tf.summary.FileWriter(FLAGS.log_dir + '/test')
     train_writer.add_graph(tf.get_default_graph())
-    # test_writer.add_graph(tf.get_default_graph())
+    test_writer.add_graph(tf.get_default_graph())
 
     # graph_location = tempfile.mkdtemp()
     # print('Saving graph to: %s' % graph_location)
@@ -169,10 +169,13 @@ def start(isTrain):
                         x: batch[0], y_: batch[1], keep_prob: 1.0})
                     summary = sess.run(merged_sunmary_op, feed_dict={
                         x: batch[0], y_: batch[1], keep_prob: 1.0})
-                    # test_writer.add_summary(summary, i)
+                    test_writer.add_summary(summary, i)
                     print('step %d, training accuracy %g' % (i, train_accuracy))
                     saver.save(sess, FLAGS.modeFileName, global_step=i)
                 train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
+                summary = sess.run(merged_sunmary_op, feed_dict={
+                    x: batch[0], y_: batch[1], keep_prob: 1.0})
+                train_writer.add_summary(summary, i)
             # 模型训练后的测试数据模型评估
             print('test accuracy %g' % accuracy.eval(feed_dict={
                 x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
@@ -190,7 +193,7 @@ def start(isTrain):
             print('test accuracy %g' % accuracy.eval(feed_dict={
                 x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
         train_writer.close()
-        # test_writer.close()
+        test_writer.close()
 
 
 def main():
